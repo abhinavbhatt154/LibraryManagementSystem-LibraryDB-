@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LibraryDB – Online SQL Execution & Management Portal</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- Top Header -->
+  <header class="bg-slate-900/90 border-b border-slate-800 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold text-lg">
+          SQL
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">LibraryDB Live SQL Workbench</h1>
+            <span id="engineBadge" class="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Engine Ready
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">PPF Week 9 DBMS Mini Project • Interactive SQL Playground & Online Compiler Script</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="btnCopyFullScript" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs sm:text-sm transition flex items-center gap-1.5 shadow-sm">
+          <span>📋 Copy Full Online SQL Script</span>
+        </button>
+        <button id="btnResetDb" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs sm:text-sm transition">
+          🔄 Reset DB
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-5 flex-1 flex flex-col gap-5">
+
+    <!-- Quick Navigation Tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div class="flex flex-wrap gap-1.5" role="tablist">
+        <button data-tab="workbench" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white transition">
+          ⚡ Live SQL Workbench
+        </button>
+        <button data-tab="fullscript" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition">
+          📄 Copy-Paste Online Compiler Code
+        </button>
+        <button data-tab="interactive" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition">
+          🏛️ Interactive Library Portal (Task 6 Demo)
+        </button>
+        <button data-tab="schema" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition">
+          🗂️ Live Table Browser
+        </button>
+      </div>
+
+      <!-- KPI Pills -->
+      <div class="flex items-center gap-2 text-xs">
+        <div class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
+          Students: <span id="kpiStudents" class="font-bold text-blue-400">6</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
+          Books: <span id="kpiBooks" class="font-bold text-emerald-400">10</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
+          Issue Records: <span id="kpiIssues" class="font-bold text-amber-400">7</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 1: LIVE SQL WORKBENCH -->
+    <section id="tab-workbench" class="tab-panel grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <!-- Left Column: Preset Task Buttons -->
+      <div class="lg:col-span-4 flex flex-col gap-3">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+            Assignment Task Presets (Click to Run)
+          </h2>
+          <div class="flex flex-col gap-2">
+            <button data-query="q_avail" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-blue-400 group-hover:text-blue-300">Task 4(a): Available Books</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300">SELECT + WHERE</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Display all books with available_copies &gt; 0</p>
+            </button>
+
+            <button data-query="q_students" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-blue-400 group-hover:text-blue-300">Task 4(b): Student Details</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300">SELECT</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Display all 6 student records sorted by ID</p>
+            </button>
+
+            <button data-query="q_student101" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-emerald-400 group-hover:text-emerald-300">Task 5: Books Issued to Student 101</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300">INNER JOIN</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Multi-table join across Students, Books, Book_Issue</p>
+            </button>
+
+            <button data-query="q_dept_agg" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-purple-400 group-hover:text-purple-300">Rubric Bonus: Dept Aggregation</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300">GROUP BY + COUNT</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Total books issued per academic department</p>
+            </button>
+
+            <button data-query="q_overdue" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-amber-400 group-hover:text-amber-300">Rubric Bonus: Overdue &amp; Fines</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300">JOIN + FILTER</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Identify overdue loans and fine amounts</p>
+            </button>
+
+            <button data-query="q_return_dml" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-rose-400 group-hover:text-rose-300">Rubric Bonus: Book Return DML</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-300">UPDATE + SELECT</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Mark Issue #1 returned and increment book stock</p>
+            </button>
+
+            <button data-query="q_all_issues" class="preset-btn text-left p-2.5 rounded-lg bg-slate-800/70 hover:bg-slate-800 border border-slate-700/80 transition group">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-cyan-400 group-hover:text-cyan-300">Full Circulation Log</span>
+                <span class="text-[11px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300">3-TABLE JOIN</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">View all 7 book issue/return transactions</p>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: SQL Editor & Execution Output -->
+      <div class="lg:col-span-8 flex flex-col gap-4">
+        <!-- SQL Editor Box -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+          <div class="px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+              <span id="currentQueryTitle" class="text-xs font-semibold text-slate-300">SQL Query Editor (Editable)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="btnCopyEditorSql" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition">
+                Copy Query
+              </button>
+              <button id="btnRunSql" class="px-3.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition flex items-center gap-1 shadow">
+                ▶ Run SQL Query
+              </button>
+            </div>
+          </div>
+          <textarea id="sqlEditor" rows="7" spellcheck="false" class="w-full p-4 bg-slate-950 text-emerald-300 mono text-xs sm:text-sm focus:outline-none resize-y border-0" placeholder="Write your SQL query here..."></textarea>
+        </div>
+
+        <!-- Output Result Table Box -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex-1 flex flex-col">
+          <div class="px-4 py-2.5 bg-slate-950/60 border-b border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-300">Execution Result Output (Screenshot Ready)</span>
+            <span id="queryStatusMeta" class="text-xs text-slate-400">0 rows returned</span>
+          </div>
+          <div id="resultContainer" class="p-4 overflow-x-auto flex-1">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: COPY-PASTE ONLINE COMPILER CODE -->
+    <section id="tab-fullscript" class="tab-panel hidden flex-col gap-4">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 class="text-sm sm:text-base font-bold text-white">100% Online Compiler Compatible SQL Script</h2>
+            <p class="text-xs text-slate-400 mt-0.5">
+              Works directly on <strong>OneCompiler (MySQL / PostgreSQL / SQLite)</strong>, <strong>Programiz SQL</strong>, <strong>SQLiteOnline.com</strong>, and <strong>DB-Fiddle</strong>.
+              (Note: <code class="text-amber-300">CREATE DATABASE</code> is commented out because online sandboxes pre-create the database for you.)
+            </p>
+          </div>
+          <button id="btnCopyCompilerBlock" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs sm:text-sm transition shadow">
+            📋 Copy Entire SQL Script
+          </button>
+        </div>
+        <pre id="fullSqlScriptBlock" class="p-4 rounded-lg bg-slate-950 border border-slate-800 text-slate-200 mono text-xs overflow-x-auto max-h-[540px] leading-relaxed select-all"></pre>
+      </div>
+    </section>
+
+    <!-- TAB 3: INTERACTIVE LIBRARY PORTAL (WEB CONNECTION DEMO - TASK 6) -->
+    <section id="tab-interactive" class="tab-panel hidden grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-4">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">Task 6 Live Simulation</span>
+          <h2 class="text-base font-bold text-white mt-2">Issue a Book to a Student</h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Demonstrates how a Web Frontend form executes parameterized SQL transactions (<code class="text-emerald-300">INSERT INTO Book_Issue</code> + <code class="text-emerald-300">UPDATE Books</code>) on the live database.
+          </p>
+        </div>
+
+        <form id="issueBookForm" class="flex flex-col gap-3">
+          <div>
+            <label for="selectStudent" class="block text-xs font-medium text-slate-300 mb-1">Select Student Patron</label>
+            <select id="selectStudent" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs sm:text-sm text-white focus:border-blue-500 focus:outline-none"></select>
+          </div>
+
+          <div>
+            <label for="selectBook" class="block text-xs font-medium text-slate-300 mb-1">Select Available Book</label>
+            <select id="selectBook" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs sm:text-sm text-white focus:border-blue-500 focus:outline-none"></select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label for="inputIssueDate" class="block text-xs font-medium text-slate-300 mb-1">Issue Date</label>
+              <input type="date" id="inputIssueDate" value="2026-11-03" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none" />
+            </div>
+            <div>
+              <label for="inputDueDate" class="block text-xs font-medium text-slate-300 mb-1">Due Date (+14 Days)</label>
+              <input type="date" id="inputDueDate" value="2026-11-17" class="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-xs sm:text-sm text-white focus:outline-none" />
+            </div>
+          </div>
+
+          <button type="submit" class="mt-2 w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs sm:text-sm transition shadow">
+            ✅ Execute SQL Checkout Transaction
+          </button>
+        </form>
+
+        <div id="sqlTransactionLog" class="p-3 rounded-lg bg-slate-950 border border-slate-800 mono text-[11px] text-slate-400">
+          // Parameterized SQL transaction log will appear here upon checkout or return.
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col gap-3">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-bold text-white">Active Circulation Desk (Click "Return Book" to test UPDATE)</h3>
+          <span class="text-xs text-slate-400">Real-time SQL table view</span>
+        </div>
+        <div id="portalCirculationTable" class="overflow-x-auto"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: LIVE TABLE BROWSER -->
+    <section id="tab-schema" class="tab-panel hidden flex-col gap-5">
+      <div class="grid grid-cols-1 gap-5">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="text-sm font-bold text-blue-400 mb-2">1. Students Table (6 Records)</h3>
+          <div id="browseStudents" class="overflow-x-auto"></div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="text-sm font-bold text-emerald-400 mb-2">2. Books Table (10 Records)</h3>
+          <div id="browseBooks" class="overflow-x-auto"></div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <h3 class="text-sm font-bold text-amber-400 mb-2">3. Book_Issue Table (Associative Entity)</h3>
+          <div id="browseIssues" class="overflow-x-auto"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm font-medium shadow-xl"></div>
+
+  <script>
+    // =========================================================================
+    // FULL UNIVERSAL SQL SCRIPT (FOR ONLINE COMPILERS & IN-BROWSER ENGINE)
+    // =========================================================================
+    const ONLINE_COMPILER_SQL = `-- =====================================================================
+-- ONLINE COMPILER READY SQL SCRIPT (LibraryDB - PPF Week 9 Mini Project)
+-- Compatible with: OneCompiler, Programiz SQL, SQLiteOnline, DB-Fiddle, MySQL
+-- =====================================================================
+-- Note: Online SQL compilers pre-create a default database and restrict
+-- CREATE DATABASE / USE statements. Uncomment the 2 lines below only on local MySQL:
+-- CREATE DATABASE IF NOT EXISTS LibraryDB;
+-- USE LibraryDB;
+
+DROP TABLE IF EXISTS Book_Issue;
+DROP TABLE IF EXISTS Books;
+DROP TABLE IF EXISTS Students;
+
+-- 1. Create Students Table
+CREATE TABLE Students (
+    student_id INT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(15),
+    department VARCHAR(50) NOT NULL,
+    enrollment_year INT NOT NULL CHECK (enrollment_year >= 2020)
+);
+
+-- 2. Create Books Table
+CREATE TABLE Books (
+    book_id INT PRIMARY KEY,
+    title VARCHAR(150) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    isbn VARCHAR(20) UNIQUE NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    total_copies INT NOT NULL CHECK (total_copies >= 0),
+    available_copies INT NOT NULL CHECK (available_copies >= 0)
+);
+
+-- 3. Create Book_Issue Table
+CREATE TABLE Book_Issue (
+    issue_id INT PRIMARY KEY,
+    student_id INT NOT NULL,
+    book_id INT NOT NULL,
+    issue_date DATE NOT NULL,
+    due_date DATE NOT NULL,
+    return_date DATE,
+    status VARCHAR(20) NOT NULL CHECK (status IN ('Issued', 'Returned', 'Overdue')),
+    fine_amount DECIMAL(6,2) DEFAULT 0.00,
+    FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (book_id) REFERENCES Books(book_id) ON DELETE CASCADE
+);
+
+-- Insert 6 Student Records (Task 3: at least 5 required)
+INSERT INTO Students VALUES
+(101, 'Aarav', 'Sharma', 'aarav.sharma@univ.edu', '9876543210', 'Computer Science', 2024),
+(102, 'Diya', 'Patel', 'diya.patel@univ.edu', '9876543211', 'Information Technology', 2024),
+(103, 'Rohan', 'Verma', 'rohan.verma@univ.edu', '9876543212', 'Electronics & Comm', 2023),
+(104, 'Ananya', 'Iyer', 'ananya.iyer@univ.edu', '9876543213', 'Computer Science', 2023),
+(105, 'Vikram', 'Singh', 'vikram.singh@univ.edu', '9876543214', 'Mechanical Eng', 2022),
+(106, 'Pooja', 'Nair', 'pooja.nair@univ.edu', '9876543215', 'Civil Eng', 2024);
+
+-- Insert 10 Book Records (Task 3: at least 10 required)
+INSERT INTO Books VALUES
+(201, 'Fundamentals of Database Systems', 'Ramez Elmasri', '978-0133970777', 'Database Systems', 5, 3),
+(202, 'Database System Concepts', 'Abraham Silberschatz', '978-0078022159', 'Database Systems', 4, 2),
+(203, 'Introduction to Algorithms', 'Thomas H. Cormen', '978-0262033848', 'Algorithms', 6, 5),
+(204, 'Computer Networking: A Top-Down Approach', 'James Kurose', '978-0133594140', 'Networking', 4, 3),
+(205, 'Operating System Concepts', 'Abraham Silberschatz', '978-1119800361', 'Operating Systems', 5, 4),
+(206, 'Artificial Intelligence: A Modern Approach', 'Stuart Russell', '978-0134610993', 'AI & ML', 3, 2),
+(207, 'Clean Code: Agile Software Craftsmanship', 'Robert C. Martin', '978-0132350884', 'Software Eng', 4, 4),
+(208, 'Design Patterns: Reusable OO Software', 'Erich Gamma', '978-0201633610', 'Software Eng', 3, 0),
+(209, 'Modern Operating Systems', 'Andrew S. Tanenbaum', '978-0133591620', 'Operating Systems', 4, 3),
+(210, 'Distributed Systems: Principles and Paradigms', 'Maarten van Steen', '978-1530281756', 'Distributed Systems', 5, 4);
+
+-- Insert 7 Book_Issue Transactions
+INSERT INTO Book_Issue VALUES
+(1, 101, 201, '2026-10-10', '2026-10-24', NULL, 'Issued', 0.00),
+(2, 101, 204, '2026-10-15', '2026-10-29', NULL, 'Issued', 0.00),
+(3, 102, 202, '2026-09-15', '2026-09-29', '2026-09-28', 'Returned', 0.00),
+(4, 103, 208, '2026-10-01', '2026-10-15', NULL, 'Overdue', 50.00),
+(5, 104, 206, '2026-10-20', '2026-11-03', NULL, 'Issued', 0.00),
+(6, 102, 201, '2026-10-12', '2026-10-26', '2026-10-25', 'Returned', 0.00),
+(7, 105, 210, '2026-10-18', '2026-11-01', NULL, 'Issued', 0.00);
+
+-- QUERY 1 (Task 4a): Display Available Books
+SELECT book_id, title, author, category, total_copies, available_copies
+FROM Books
+WHERE available_copies > 0
+ORDER BY category, title;
+
+-- QUERY 2 (Task 4b): Display Student Details
+SELECT student_id, first_name, last_name, email, phone, department, enrollment_year
+FROM Students
+ORDER BY student_id;
+
+-- QUERY 3 (Task 5): Display Books Issued to Student 101 (Aarav Sharma)
+SELECT 
+    s.student_id,
+    s.first_name,
+    s.last_name,
+    s.department,
+    b.book_id,
+    b.title AS book_title,
+    bi.issue_date,
+    bi.due_date,
+    bi.status
+FROM Book_Issue bi
+INNER JOIN Students s ON bi.student_id = s.student_id
+INNER JOIN Books b ON bi.book_id = b.book_id
+WHERE s.student_id = 101;
+
+-- QUERY 4 (Bonus Aggregate): Total Books Issued Per Department
+SELECT 
+    s.department,
+    COUNT(bi.issue_id) AS total_books_borrowed
+FROM Students s
+LEFT JOIN Book_Issue bi ON s.student_id = bi.student_id
+GROUP BY s.department
+ORDER BY total_books_borrowed DESC;`;
+
+    // =========================================================================
+    // PRESET QUERIES DICTIONARY
+    // =========================================================================
+    const PRESET_QUERIES = {
+      q_avail: {
+        title: "Task 4(a): Display Available Books (available_copies > 0)",
+        sql: `SELECT book_id, title, author, category, total_copies, available_copies\nFROM Books\nWHERE available_copies > 0\nORDER BY category, title;`
+      },
+      q_students: {
+        title: "Task 4(b): Display All Student Details",
+        sql: `SELECT student_id, first_name, last_name, email, phone, department, enrollment_year\nFROM Students\nORDER BY student_id;`
+      },
+      q_student101: {
+        title: "Task 5: Display Books Issued to Student 101 (Aarav Sharma)",
+        sql: `SELECT \n    s.student_id,\n    s.first_name || ' ' || s.last_name AS student_name,\n    s.department,\n    b.book_id,\n    b.title AS book_title,\n    bi.issue_date,\n    bi.due_date,\n    bi.status\nFROM Book_Issue bi\nINNER JOIN Students s ON bi.student_id = s.student_id\nINNER JOIN Books b ON bi.book_id = b.book_id\nWHERE s.student_id = 101;`
+      },
+      q_dept_agg: {
+        title: "Aggregate Query: Total Books Borrowed Per Department",
+        sql: `SELECT \n    s.department,\n    COUNT(bi.issue_id) AS total_borrowed_records,\n    COUNT(CASE WHEN bi.status = 'Issued' THEN 1 END) AS active_loans\nFROM Students s\nLEFT JOIN Book_Issue bi ON s.student_id = bi.student_id\nGROUP BY s.department\nORDER BY total_borrowed_records DESC;`
+      },
+      q_overdue: {
+        title: "Overdue Books & Fine Calculation Audit",
+        sql: `SELECT \n    bi.issue_id,\n    s.first_name || ' ' || s.last_name AS student_name,\n    s.phone,\n    b.title AS overdue_book,\n    bi.due_date,\n    bi.status,\n    bi.fine_amount\nFROM Book_Issue bi\nINNER JOIN Students s ON bi.student_id = s.student_id\nINNER JOIN Books b ON bi.book_id = b.book_id\nWHERE bi.status = 'Overdue' OR bi.fine_amount > 0;`
+      },
+      q_return_dml: {
+        title: "DML Update: Process Book Return for Issue #1",
+        sql: `UPDATE Book_Issue SET return_date = '2026-11-03', status = 'Returned' WHERE issue_id = 1;\nUPDATE Books SET available_copies = available_copies + 1 WHERE book_id = 201;\n\nSELECT issue_id, student_id, book_id, issue_date, return_date, status\nFROM Book_Issue\nWHERE issue_id = 1;`
+      },
+      q_all_issues: {
+        title: "Complete Circulation Transaction Log (All 7 Records)",
+        sql: `SELECT \n    bi.issue_id,\n    s.first_name || ' ' || s.last_name AS student_name,\n    b.title AS book_title,\n    bi.issue_date,\n    bi.due_date,\n    COALESCE(bi.return_date, 'Not Returned') AS return_date,\n    bi.status,\n    bi.fine_amount\nFROM Book_Issue bi\nINNER JOIN Students s ON bi.student_id = s.student_id\nINNER JOIN Books b ON bi.book_id = b.book_id\nORDER BY bi.issue_id;`
+      }
+    };
+
+    // =========================================================================
+    // IN-MEMORY DATABASE ENGINE (SQL.js + Pure JS Fallback)
+    // =========================================================================
+    let db = null;
+    let SQL_ENGINE = null;
+
+    const SCHEMA_INIT_SQL = `
+      DROP TABLE IF EXISTS Book_Issue;
+      DROP TABLE IF EXISTS Books;
+      DROP TABLE IF EXISTS Students;
+
+      CREATE TABLE Students (
+          student_id INT PRIMARY KEY,
+          first_name VARCHAR(50) NOT NULL,
+          last_name VARCHAR(50) NOT NULL,
+          email VARCHAR(100) UNIQUE NOT NULL,
+          phone VARCHAR(15),
+          department VARCHAR(50) NOT NULL,
+          enrollment_year INT NOT NULL CHECK (enrollment_year >= 2020)
+      );
+
+      CREATE TABLE Books (
+          book_id INT PRIMARY KEY,
+          title VARCHAR(150) NOT NULL,
+          author VARCHAR(100) NOT NULL,
+          isbn VARCHAR(20) UNIQUE NOT NULL,
+          category VARCHAR(50) NOT NULL,
+          total_copies INT NOT NULL CHECK (total_copies >= 0),
+          available_copies INT NOT NULL CHECK (available_copies >= 0)
+      );
+
+      CREATE TABLE Book_Issue (
+          issue_id INT PRIMARY KEY,
+          student_id INT NOT NULL,
+          book_id INT NOT NULL,
+          issue_date DATE NOT NULL,
+          due_date DATE NOT NULL,
+          return_date DATE,
+          status VARCHAR(20) NOT NULL CHECK (status IN ('Issued', 'Returned', 'Overdue')),
+          fine_amount DECIMAL(6,2) DEFAULT 0.00,
+          FOREIGN KEY (student_id) REFERENCES Students(student_id) ON DELETE CASCADE,
+          FOREIGN KEY (book_id) REFERENCES Books(book_id) ON DELETE CASCADE
+      );
+
+      INSERT INTO Students VALUES
+      (101, 'Aarav', 'Sharma', 'aarav.sharma@univ.edu', '9876543210', 'Computer Science', 2024),
+      (102, 'Diya', 'Patel', 'diya.patel@univ.edu', '9876543211', 'Information Technology', 2024),
+      (103, 'Rohan', 'Verma', 'rohan.verma@univ.edu', '9876543212', 'Electronics & Comm', 2023),
+      (104, 'Ananya', 'Iyer', 'ananya.iyer@univ.edu', '9876543213', 'Computer Science', 2023),
+      (105, 'Vikram', 'Singh', 'vikram.singh@univ.edu', '9876543214', 'Mechanical Eng', 2022),
+      (106, 'Pooja', 'Nair', 'pooja.nair@univ.edu', '9876543215', 'Civil Eng', 2024);
+
+      INSERT INTO Books VALUES
+      (201, 'Fundamentals of Database Systems', 'Ramez Elmasri', '978-0133970777', 'Database Systems', 5, 3),
+      (202, 'Database System Concepts', 'Abraham Silberschatz', '978-0078022159', 'Database Systems', 4, 2),
+      (203, 'Introduction to Algorithms', 'Thomas H. Cormen', '978-0262033848', 'Algorithms', 6, 5),
+      (204, 'Computer Networking: A Top-Down Approach', 'James Kurose', '978-0133594140', 'Networking', 4, 3),
+      (205, 'Operating System Concepts', 'Abraham Silberschatz', '978-1119800361', 'Operating Systems', 5, 4),
+      (206, 'Artificial Intelligence: A Modern Approach', 'Stuart Russell', '978-0134610993', 'AI & ML', 3, 2),
+      (207, 'Clean Code: Agile Software Craftsmanship', 'Robert C. Martin', '978-0132350884', 'Software Eng', 4, 4),
+      (208, 'Design Patterns: Reusable OO Software', 'Erich Gamma', '978-0201633610', 'Software Eng', 3, 0),
+      (209, 'Modern Operating Systems', 'Andrew S. Tanenbaum', '978-0133591620', 'Operating Systems', 4, 3),
+      (210, 'Distributed Systems: Principles and Paradigms', 'Maarten van Steen', '978-1530281756', 'Distributed Systems', 5, 4);
+
+      INSERT INTO Book_Issue VALUES
+      (1, 101, 201, '2026-10-10', '2026-10-24', NULL, 'Issued', 0.00),
+      (2, 101, 204, '2026-10-15', '2026-10-29', NULL, 'Issued', 0.00),
+      (3, 102, 202, '2026-09-15', '2026-09-29', '2026-09-28', 'Returned', 0.00),
+      (4, 103, 208, '2026-10-01', '2026-10-15', NULL, 'Overdue', 50.00),
+      (5, 104, 206, '2026-10-20', '2026-11-03', NULL, 'Issued', 0.00),
+      (6, 102, 201, '2026-10-12', '2026-10-26', '2026-10-25', 'Returned', 0.00),
+      (7, 105, 210, '2026-10-18', '2026-11-01', NULL, 'Issued', 0.00);
+    `;
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2800);
+    }
+
+    function copyText(text, label) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast(`✅ Copied ${label} to clipboard!`);
+        }).catch(() => fallbackCopy(text, label));
+      } else {
+        fallbackCopy(text, label);
+      }
+    }
+
+    function fallbackCopy(text, label) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast(`✅ Copied ${label} to clipboard!`);
+    }
+
+    function renderResultTable(columns, values, targetEl) {
+      if (!columns || columns.length === 0) {
+        targetEl.innerHTML = `<div class="p-4 text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-800/50 rounded-lg">✅ SQL statement executed successfully.</div>`;
+        return;
+      }
+      let html = `<table class="w-full text-left border-collapse text-xs"><thead><tr class="bg-slate-800/90 text-slate-200 border-b border-slate-700">`;
+      columns.forEach(col => {
+        html += `<th class="py-2.5 px-3 font-semibold uppercase tracking-wider text-[11px]">${col}</th>`;
+      });
+      html += `</tr></thead><tbody class="divide-y divide-slate-800/80">`;
+      values.forEach((row, rIdx) => {
+        const bg = rIdx % 2 === 1 ? 'bg-slate-900/40' : '';
+        html += `<tr class="${bg} hover:bg-slate-800/50 transition">`;
+        row.forEach(val => {
+          let displayVal = val === null ? `<span class="text-slate-500 italic">NULL</span>` : String(val);
+          if (displayVal === 'Issued') {
+            displayVal = `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/20 text-blue-300 border border-blue-500/30">Issued</span>`;
+          } else if (displayVal === 'Returned') {
+            displayVal = `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Returned</span>`;
+          } else if (displayVal === 'Overdue') {
+            displayVal = `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/20 text-rose-300 border border-rose-500/30">Overdue</span>`;
+          }
+          html += `<td class="py-2 px-3 text-slate-200 whitespace-nowrap">${displayVal}</td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      targetEl.innerHTML = html;
+    }
+
+    function executeSqlInWorkbench(sqlText) {
+      const container = document.getElementById('resultContainer');
+      const meta = document.getElementById('queryStatusMeta');
+      if (!db) {
+        container.innerHTML = `<div class="p-4 text-xs text-amber-300">Initializing SQL engine, please wait...</div>`;
+        return;
+      }
+      try {
+        const t0 = performance.now();
+        const res = db.exec(sqlText);
+        const dt = (performance.now() - t0).toFixed(1);
+        if (res.length === 0) {
+          meta.textContent = `Executed in ${dt} ms`;
+          renderResultTable([], [], container);
+        } else {
+          const lastRes = res[res.length - 1];
+          meta.textContent = `${lastRes.values.length} row(s) • ${dt} ms`;
+          renderResultTable(lastRes.columns, lastRes.values, container);
+        }
+        refreshAllViews();
+      } catch (err) {
+        meta.textContent = `SQL Error`;
+        container.innerHTML = `<div class="p-4 rounded-lg bg-rose-950/50 border border-rose-800 text-rose-300 text-xs mono">${err.message}</div>`;
+      }
+    }
+
+    function refreshAllViews() {
+      if (!db) return;
+      try {
+        // Update KPI counts
+        const sCount = db.exec("SELECT COUNT(*) FROM Students")[0].values[0][0];
+        const bCount = db.exec("SELECT COUNT(*) FROM Books")[0].values[0][0];
+        const iCount = db.exec("SELECT COUNT(*) FROM Book_Issue")[0].values[0][0];
+        document.getElementById('kpiStudents').textContent = sCount;
+        document.getElementById('kpiBooks').textContent = bCount;
+        document.getElementById('kpiIssues').textContent = iCount;
+
+        // Populate Table Browser
+        const sRes = db.exec("SELECT * FROM Students ORDER BY student_id")[0];
+        if (sRes) renderResultTable(sRes.columns, sRes.values, document.getElementById('browseStudents'));
+
+        const bRes = db.exec("SELECT * FROM Books ORDER BY book_id")[0];
+        if (bRes) renderResultTable(bRes.columns, bRes.values, document.getElementById('browseBooks'));
+
+        const iRes = db.exec("SELECT * FROM Book_Issue ORDER BY issue_id")[0];
+        if (iRes) renderResultTable(iRes.columns, iRes.values, document.getElementById('browseIssues'));
+
+        // Populate Interactive Portal selects
+        const studentSelect = document.getElementById('selectStudent');
+        studentSelect.innerHTML = sRes.values.map(r => `<option value="${r[0]}">${r[0]} - ${r[1]} ${r[2]} (${r[5]})</option>`).join('');
+
+        const availBooks = db.exec("SELECT book_id, title, available_copies FROM Books WHERE available_copies > 0 ORDER BY book_id")[0];
+        const bookSelect = document.getElementById('selectBook');
+        if (availBooks && availBooks.values.length > 0) {
+          bookSelect.innerHTML = availBooks.values.map(r => `<option value="${r[0]}">[#${r[0]}] ${r[1]} (${r[2]} available)</option>`).join('');
+        } else {
+          bookSelect.innerHTML = `<option value="">No books available</option>`;
+        }
+
+        // Render Portal Circulation Table with Action Button
+        const circRes = db.exec(`
+          SELECT bi.issue_id, s.first_name || ' ' || s.last_name AS student, b.book_id, b.title, bi.issue_date, bi.due_date, bi.status
+          FROM Book_Issue bi
+          JOIN Students s ON bi.student_id = s.student_id
+          JOIN Books b ON bi.book_id = b.book_id
+          ORDER BY bi.issue_id DESC
+        `)[0];
+
+        const portalDiv = document.getElementById('portalCirculationTable');
+        if (circRes) {
+          let html = `<table class="w-full text-left border-collapse text-xs"><thead><tr class="bg-slate-800 text-slate-200 border-b border-slate-700">
+            <th class="py-2 px-2.5">ID</th>
+            <th class="py-2 px-2.5">Student</th>
+            <th class="py-2 px-2.5">Book Title</th>
+            <th class="py-2 px-2.5">Due Date</th>
+            <th class="py-2 px-2.5">Status</th>
+            <th class="py-2 px-2.5 text-right">Action</th>
+          </tr></thead><tbody class="divide-y divide-slate-800">`;
+
+          circRes.values.forEach(r => {
+            const [id, stu, bookId, title, iDate, dDate, status] = r;
+            const badge = status === 'Returned'
+              ? `<span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-500/20 text-emerald-300">Returned</span>`
+              : status === 'Overdue'
+                ? `<span class="px-2 py-0.5 rounded-full text-[11px] bg-rose-500/20 text-rose-300">Overdue</span>`
+                : `<span class="px-2 py-0.5 rounded-full text-[11px] bg-blue-500/20 text-blue-300">Issued</span>`;
+
+            const actionBtn = status !== 'Returned'
+              ? `<button data-return-id="${id}" data-book-id="${bookId}" class="return-book-btn px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium text-[11px] transition">Return Book</button>`
+              : `<span class="text-slate-500 text-[11px]">Completed</span>`;
+
+            html += `<tr class="hover:bg-slate-800/40">
+              <td class="py-2 px-2.5 font-mono text-slate-300">#${id}</td>
+              <td class="py-2 px-2.5 text-white font-medium">${stu}</td>
+              <td class="py-2 px-2.5 text-slate-300">${title}</td>
+              <td class="py-2 px-2.5 text-slate-400">${dDate}</td>
+              <td class="py-2 px-2.5">${badge}</td>
+              <td class="py-2 px-2.5 text-right">${actionBtn}</td>
+            </tr>`;
+          });
+          html += `</tbody></table>`;
+          portalDiv.innerHTML = html;
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function resetDatabase() {
+      if (!SQL_ENGINE) return;
+      db = new SQL_ENGINE.Database();
+      db.run(SCHEMA_INIT_SQL);
+      const defaultPreset = PRESET_QUERIES.q_avail;
+      document.getElementById('currentQueryTitle').textContent = defaultPreset.title;
+      document.getElementById('sqlEditor').value = defaultPreset.sql;
+      executeSqlInWorkbench(defaultPreset.sql);
+      showToast("🔄 Database reset to initial PPF Week 9 state!");
+    }
+
+    // Initialize Application
+    window.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('fullSqlScriptBlock').textContent = ONLINE_COMPILER_SQL;
+
+      // Tab Switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const target = btn.getAttribute('data-tab');
+          document.querySelectorAll('.tab-btn').forEach(b => {
+            b.className = "tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-slate-900 text-slate-300 hover:bg-slate-800 border border-slate-800 transition";
+          });
+          btn.className = "tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-blue-600 text-white transition";
+
+          document.querySelectorAll('.tab-panel').forEach(p => {
+            p.classList.add('hidden');
+            p.classList.remove('grid', 'flex');
+          });
+          const activePanel = document.getElementById(`tab-${target}`);
+          activePanel.classList.remove('hidden');
+          if (target === 'workbench' || target === 'interactive') {
+            activePanel.classList.add('grid');
+          } else {
+            activePanel.classList.add('flex');
+          }
+        });
+      });
+
+      // Preset Query Buttons
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-query');
+          const preset = PRESET_QUERIES[key];
+          if (preset) {
+            document.getElementById('currentQueryTitle').textContent = preset.title;
+            document.getElementById('sqlEditor').value = preset.sql;
+            executeSqlInWorkbench(preset.sql);
+          }
+        });
+      });
+
+      // Run SQL Button
+      document.getElementById('btnRunSql').addEventListener('click', () => {
+        const sql = document.getElementById('sqlEditor').value;
+        executeSqlInWorkbench(sql);
+      });
+
+      // Copy Buttons
+      document.getElementById('btnCopyEditorSql').addEventListener('click', () => {
+        copyText(document.getElementById('sqlEditor').value, 'Query SQL');
+      });
+      document.getElementById('btnCopyFullScript').addEventListener('click', () => {
+        copyText(ONLINE_COMPILER_SQL, 'Full Online SQL Script');
+      });
+      document.getElementById('btnCopyCompilerBlock').addEventListener('click', () => {
+        copyText(ONLINE_COMPILER_SQL, 'Full Online SQL Script');
+      });
+
+      // Reset DB Button
+      document.getElementById('btnResetDb').addEventListener('click', resetDatabase);
+
+      // Interactive Checkout Form (Task 6 Web Integration Simulation)
+      document.getElementById('issueBookForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!db) return;
+        const studentId = parseInt(document.getElementById('selectStudent').value, 10);
+        const bookId = parseInt(document.getElementById('selectBook').value, 10);
+        const issueDate = document.getElementById('inputIssueDate').value;
+        const dueDate = document.getElementById('inputDueDate').value;
+
+        if (!studentId || !bookId) {
+          showToast("⚠️ Please select a valid student and available book.");
+          return;
+        }
+
+        try {
+          const nextIdRes = db.exec("SELECT COALESCE(MAX(issue_id), 0) + 1 FROM Book_Issue");
+          const nextId = nextIdRes[0].values[0][0];
+
+          db.run("INSERT INTO Book_Issue VALUES (?, ?, ?, ?, ?, NULL, 'Issued', 0.00)", [nextId, studentId, bookId, issueDate, dueDate]);
+          db.run("UPDATE Books SET available_copies = available_copies - 1 WHERE book_id = ?", [bookId]);
+
+          document.getElementById('sqlTransactionLog').innerHTML =
+            `<span class="text-emerald-400 font-semibold">-- Executed Parameterized Web Transaction:</span><br>` +
+            `INSERT INTO Book_Issue VALUES (${nextId}, ${studentId}, ${bookId}, '${issueDate}', '${dueDate}', NULL, 'Issued', 0.00);<br>` +
+            `UPDATE Books SET available_copies = available_copies - 1 WHERE book_id = ${bookId};`;
+
+          refreshAllViews();
+          showToast(`✅ Issued Book #${bookId} to Student #${studentId}!`);
+        } catch (err) {
+          showToast(`❌ Transaction Error: ${err.message}`);
+        }
+      });
+
+      // Event Delegation for Return Book Buttons in Portal
+      document.getElementById('portalCirculationTable').addEventListener('click', (e) => {
+        const btn = e.target.closest('.return-book-btn');
+        if (!btn || !db) return;
+        const issueId = parseInt(btn.getAttribute('data-return-id'), 10);
+        const bookId = parseInt(btn.getAttribute('data-book-id'), 10);
+        const today = '2026-11-03';
+
+        try {
+          db.run("UPDATE Book_Issue SET return_date = ?, status = 'Returned' WHERE issue_id = ?", [today, issueId]);
+          db.run("UPDATE Books SET available_copies = available_copies + 1 WHERE book_id = ?", [bookId]);
+
+          document.getElementById('sqlTransactionLog').innerHTML =
+            `<span class="text-amber-400 font-semibold">-- Executed Book Return Transaction:</span><br>` +
+            `UPDATE Book_Issue SET return_date = '${today}', status = 'Returned' WHERE issue_id = ${issueId};<br>` +
+            `UPDATE Books SET available_copies = available_copies + 1 WHERE book_id = ${bookId};`;
+
+          refreshAllViews();
+          showToast(`✅ Returned Issue #${issueId} and incremented Book #${bookId} stock!`);
+        } catch (err) {
+          showToast(`❌ Error: ${err.message}`);
+        }
+      });
+
+      // Load SQL.js WebAssembly Engine
+      try {
+        SQL_ENGINE = await initSqlJs({
+          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+        });
+        resetDatabase();
+      } catch (err) {
+        document.getElementById('engineBadge').textContent = "Offline Mode";
+        console.error("Failed to load SQL.js WASM:", err);
+      }
+    });
+  </script>
+</body>
+</html>
